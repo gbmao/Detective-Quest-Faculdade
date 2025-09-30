@@ -14,6 +14,7 @@ typedef struct Room
     struct Room *left;
     struct Room *right;
     char name[STRING_MAX];
+    char clueDescription[STRING_MAX];
 } Room;
 
 typedef struct Stack
@@ -21,7 +22,14 @@ typedef struct Stack
     char roomName[MAX_ROOM][STRING_MAX];
     int top;
 
-}Stack;
+} Stack;
+
+typedef struct Clue
+{
+    char clueDescription[STRING_MAX];
+    struct Clue *left;
+    struct Clue *right;
+} Clue;
 
 struct Room *createRoom();
 void buildMap();
@@ -33,13 +41,24 @@ void gameLogic();
 void initializeStack(Stack *s);
 int stackIsFull(Stack *s);
 int stackIsEmpty(Stack *s);
-void push(Stack *s, char new[]);     // add new element to top
+void push(Stack *s, char new[]);   // add new element to top
 void pop(Stack *s, char *removed); // remove top element
 void showStack(Stack *s);
 
+// struct Clue* createClue(char *clueDescription);
+struct Clue *addClueTree(Clue *r, char clueDescription[]);
+void inOrder(struct Clue *r);
+
+void freeTree(Room *r);
+void freeClueTree(Clue *r);
+
 int roomIndex = 0;
-char name[MAX_ROOM][20] = {"Hall de entrada", "Cozinha", "Biblioteca", "Quarto de Hospede", "Sotao", "Suite", "Lavanderia"};
+char name[MAX_ROOM][STRING_MAX] = {"Hall de entrada", "Cozinha", "Biblioteca", "Quarto de Hospede", "Sotao", "Suite", "Lavanderia"};
 struct Room *saguao = NULL; // iniciando head como global
+
+int clueIndex = 0;
+char clueDescription[MAX_ROOM][STRING_MAX] = {"Sangue", "Punhal", "Lenco sujo", "Envelope", "bengala", "fuzil", "revolver"};
+Clue *head = NULL; // inicia pista
 
 int main()
 {
@@ -54,7 +73,6 @@ int main()
     // - Exiba o nome da sala a cada movimento.
     // - Use recursão ou laços para caminhar pela árvore.
     // - Nenhuma inserção dinâmica é necessária neste nível.
- 
 
     gameLogic();
 
@@ -95,7 +113,7 @@ int menu(Room *r)
     {
         printf("\n(d). Direita\n");
     }
-    if(r->left != NULL)
+    if (r->left != NULL)
     {
         printf("(e). Esquerda\n");
     }
@@ -114,19 +132,24 @@ void gameLogic()
     int flag = 1;
     Stack roomPassedBy;
     initializeStack(&roomPassedBy);
+    Clue *c = NULL;
 
     while (flag)
     {
         push(&roomPassedBy, r->name);
+        c = addClueTree(c, r->clueDescription);
         if (r->left == NULL && r->right == NULL)
         {
-            printf("Voce chegou ao final\n");
+            printf("\n\n --- Voce chegou ao final ---\n");
             showStack(&roomPassedBy);
+            printf("\n\n---PISTAS---\n");
+            inOrder(c);
+            printf("\n\n");
         }
 
         switch (menu(r))
         {
-        case 100:
+        case 'd':
             if (r->right == NULL)
             {
                 printf("Esta porta esta fechada\n");
@@ -136,11 +159,13 @@ void gameLogic()
                 r = r->right;
             }
             break;
-        case 101:
+        case 'e':
             if (r->left == NULL)
             {
                 printf("Esta porta esta trancada\n");
-            } else {
+            }
+            else
+            {
                 r = r->left;
             }
             break;
@@ -152,8 +177,14 @@ void gameLogic()
             flag = 0;
             break;
         }
+
         clearTerminal();
     }
+    freeTree(saguao);
+    freeClueTree(head);
+    head = NULL;
+    saguao = NULL;
+    // free(r);
 }
 
 struct Room *createRoom()
@@ -164,11 +195,13 @@ struct Room *createRoom()
     r->right = NULL;
     strcpy(r->name, name[roomIndex]);
     roomIndex++;
+    strcpy(r->clueDescription, clueDescription[clueIndex]);
+    clueIndex++;
 
     return r;
 }
 
- void buildMap()
+void buildMap()
 {
     saguao = createRoom();
     saguao->right = createRoom();
@@ -177,45 +210,46 @@ struct Room *createRoom()
     saguao->left = createRoom();
     saguao->left->right = createRoom();
     saguao->left->left = createRoom();
-    
 }
 
+struct Clue *createClue(char *clueDescription)
+{
+    struct Clue *new = (struct Clue *)malloc(sizeof(struct Clue));
+    strcpy(new->clueDescription, clueDescription);
+    new->left = NULL;
+    new->right = NULL;
+    return new;
+}
 
-// {
+struct Clue *addClueTree(Clue *r, char clueDescription[])
+{
+    if (r == NULL)
+    {
+        r = createClue(clueDescription);
+    }
 
-//     if (saguao == NULL)
-//     {
-//         saguao = createRoom();
-//         r = saguao;
-//     }
+    if (strcmp(r->clueDescription, clueDescription) > 0)
+    {
 
-//     while (MAX_ROOM > roomIndex)
-//     {
+        r->right = addClueTree(r->right, clueDescription);
+    }
+    else if (strcmp(r->clueDescription, clueDescription) < 0)
+    {
+        r->left = addClueTree(r->left, clueDescription);
+    }
+    return r;
+}
 
-//         if (strcmp(r->name, name[roomIndex]) > 0)
-//         {
-//             if (r->right == NULL)
-//             {
-//                 r->right = createRoom();
-//             }
-//             else
-//             {
-//                 buildMap(r->right);
-//             }
-//         }
-//         else if (strcmp(r->name, name[roomIndex]) < 0)
-//         {
-//             if (r->left == NULL)
-//             {
-//                 r->left = createRoom();
-//             }
-//             else
-//             {
-//                 buildMap(r->left);
-//             }
-//         }
-//     }
-// }
+void inOrder(struct Clue *r)
+{
+    // printf("aqui\n");
+    if (r != NULL)
+    {
+        inOrder(r->right);
+        printf("%s ", r->clueDescription);
+        inOrder(r->left);
+    }
+}
 
 void clearTerminal()
 {
@@ -232,40 +266,68 @@ void clearInput()
         ;
 }
 
-
-void initializeStack(Stack *s){
+void initializeStack(Stack *s)
+{
     s->top = -1;
 }
-int stackIsFull(Stack *s){
-    return s->top == MAX_ROOM -1;
+int stackIsFull(Stack *s)
+{
+    return s->top == MAX_ROOM - 1;
 }
-int stackIsEmpty(Stack *s){
+int stackIsEmpty(Stack *s)
+{
     return s->top == -1;
 }
-void push(Stack *s, char new[]){// add new element to top
-    if(stackIsFull(s)){
+void push(Stack *s, char new[])
+{ // add new element to top
+    if (stackIsFull(s))
+    {
         return;
     }
 
     s->top++;
     strcpy(s->roomName[s->top], new);
-   // printf("%s foi colocado em %s\n", new, s->roomName[s->top]);
-}     
-void pop(Stack *s, char *removed){
-    if(stackIsEmpty(s)){
+    // printf("%s foi colocado em %s\n", new, s->roomName[s->top]);
+}
+void pop(Stack *s, char *removed)
+{
+    if (stackIsEmpty(s))
+    {
         return;
     }
 
     removed = s->roomName[s->top];
     s->top--;
 } // remove top element
-void showStack(Stack *s){
+void showStack(Stack *s)
+{
     printf("Salas percorridas: \n");
 
-    for (int i = 0; i < s->top ; i++)
+    for (int i = 0; i < s->top; i++)
     {
-        printf("%s -> ",s->roomName[i]);
+        printf("%s -> ", s->roomName[i]);
     }
-    printf("%s\n",s->roomName[s->top]);
-    
+    printf("%s\n", s->roomName[s->top]);
+}
+
+void freeTree(Room *r)
+{
+
+    if (r == NULL)
+        return;
+
+    freeTree(r->right);
+    freeTree(r->left);
+    free(r);
+}
+
+void freeClueTree(Clue *c)
+{
+
+    if (c == NULL)
+        return;
+
+    freeClueTree(c->right);
+    freeClueTree(c->left);
+    free(c);
 }

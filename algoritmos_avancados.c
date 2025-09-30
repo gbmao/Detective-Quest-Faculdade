@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
-#include <malloc.h>
+#include <stdlib.h>
+#include <time.h>
 
 // Desafio Detective Quest
 // Tema 4 - Árvores e Tabela Hash
@@ -8,6 +9,7 @@
 // Use as instruções de cada região para desenvolver o sistema completo com árvore binária, árvore de busca e tabela hash.
 #define STRING_MAX 30
 #define MAX_ROOM 7
+#define TABLE_SIZE 3
 
 typedef struct Room
 {
@@ -31,6 +33,19 @@ typedef struct Clue
     struct Clue *right;
 } Clue;
 
+typedef struct Suspect
+{
+    char suspect[STRING_MAX];
+    char clue[STRING_MAX];
+    struct Suspect* next;
+}Suspect;
+
+Suspect* hash_table[TABLE_SIZE];
+
+int hash_function(const char* key);
+void hash_insert(const char* clue, const char* sus);
+int search(const char* clue);
+
 struct Room *createRoom();
 void buildMap();
 
@@ -52,16 +67,20 @@ void inOrder(struct Clue *r);
 void freeTree(Room *r);
 void freeClueTree(Clue *r);
 
+
+char suspect[TABLE_SIZE][STRING_MAX] = {"Mordomo", "Empregada", "Velho"};
+
 int roomIndex = 0;
 char name[MAX_ROOM][STRING_MAX] = {"Hall de entrada", "Cozinha", "Biblioteca", "Quarto de Hospede", "Sotao", "Suite", "Lavanderia"};
 struct Room *saguao = NULL; // iniciando head como global
 
 int clueIndex = 0;
-char clueDescription[MAX_ROOM][STRING_MAX] = {"Sangue", "Punhal", "Lenco sujo", "Envelope", "bengala", "fuzil", "revolver"};
+char clueDescription[MAX_ROOM][STRING_MAX] = {"Sangue", "Punhal", "Lenco", "Envelope", "bengala", "fuzil", "revolver"};
 Clue *head = NULL; // inicia pista
 
 int main()
 {
+    srand(time(NULL));
 
     // 🌱 Nível Novato: Mapa da Mansão com Árvore Binária
     //
@@ -102,6 +121,46 @@ int main()
 
     return 0;
 }
+
+int hash_function(const char* key)
+{
+    int sum = 0;
+    for (int i = 0;  key[i] != '\0'; i++)
+    {
+        sum += key[i];
+    }
+    return sum % TABLE_SIZE;
+    
+}
+void hash_insert(const char* clue, const char* suspect)
+{
+    int index = hash_function(clue);
+    Suspect* new = (Suspect*)malloc(sizeof(Suspect));
+    strcpy(new->suspect, suspect);
+
+    new->next = hash_table[index];
+    hash_table[index] = new;
+}
+int search(const char* clue)
+{   
+    int total = 0;
+    int index = hash_function(clue);
+    Suspect* actual = hash_table[index];
+
+    
+        if (strcmp(actual->clue, clue))
+        {
+            //printf("A pista: %s, pertence ao suspeito: %s\n",clue, sus);
+            printf("Suspeito: %s\n", actual->suspect);
+            total++;
+        }
+       // actual = actual->next;
+        
+    
+    return total;
+    
+}
+
 
 int menu(Room *r)
 {
@@ -145,6 +204,7 @@ void gameLogic()
             printf("\n\n---PISTAS---\n");
             inOrder(c);
             printf("\n\n");
+
         }
 
         switch (menu(r))
@@ -226,6 +286,7 @@ struct Clue *addClueTree(Clue *r, char clueDescription[])
     if (r == NULL)
     {
         r = createClue(clueDescription);
+        hash_insert(clueDescription, suspect[(rand() %3)]);
     }
 
     if (strcmp(r->clueDescription, clueDescription) > 0)
@@ -237,6 +298,7 @@ struct Clue *addClueTree(Clue *r, char clueDescription[])
     {
         r->left = addClueTree(r->left, clueDescription);
     }
+
     return r;
 }
 
@@ -247,6 +309,7 @@ void inOrder(struct Clue *r)
     {
         inOrder(r->right);
         printf("%s ", r->clueDescription);
+        search(r->clueDescription);
         inOrder(r->left);
     }
 }

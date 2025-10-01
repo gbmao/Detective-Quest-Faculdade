@@ -29,6 +29,7 @@ typedef struct Stack
 typedef struct Clue
 {
     char clueDescription[STRING_MAX];
+    char suspectName[STRING_MAX];
     struct Clue *left;
     struct Clue *right;
 } Clue;
@@ -37,14 +38,14 @@ typedef struct Suspect
 {
     char suspect[STRING_MAX];
     char clue[STRING_MAX];
-    struct Suspect* next;
-}Suspect;
+    struct Suspect *next;
+} Suspect;
 
-Suspect* hash_table[TABLE_SIZE];
+Suspect *hash_table[TABLE_SIZE];
 
-int hash_function(const char* key);
-void hash_insert(const char* clue, const char* sus);
-int search(const char* clue);
+int hash_function(const char *key);
+void hash_insert(const char *clue, const char *sus);
+int search(const char *clue);
 
 struct Room *createRoom();
 void buildMap();
@@ -67,6 +68,7 @@ void inOrder(struct Clue *r);
 void freeTree(Room *r);
 void freeClueTree(Clue *r);
 
+int searchTotalClueFromSuspect(const char *clue, char suspect);
 
 char suspect[TABLE_SIZE][STRING_MAX] = {"Mordomo", "Empregada", "Velho"};
 
@@ -122,45 +124,102 @@ int main()
     return 0;
 }
 
-int hash_function(const char* key)
+void showSuspect(struct Clue *r)
+{
+}
+
+int hash_function(const char *key)
 {
     int sum = 0;
-    for (int i = 0;  key[i] != '\0'; i++)
+    for (int i = 0; key[i] != '\0'; i++)
     {
         sum += key[i];
     }
     return sum % TABLE_SIZE;
-    
 }
-void hash_insert(const char* clue, const char* suspect)
+void hash_insert(const char *clue, const char *suspect)
 {
     int index = hash_function(clue);
-    Suspect* new = (Suspect*)malloc(sizeof(Suspect));
+    Suspect *new = (Suspect *)malloc(sizeof(Suspect));
     strcpy(new->suspect, suspect);
+    strcpy(new->clue, clue);
 
     new->next = hash_table[index];
     hash_table[index] = new;
 }
-int search(const char* clue)
-{   
+int search(const char *clue)
+{
     int total = 0;
     int index = hash_function(clue);
-    Suspect* actual = hash_table[index];
+    Suspect *actual = hash_table[index];
 
-    
-        if (strcmp(actual->clue, clue))
-        {
-            //printf("A pista: %s, pertence ao suspeito: %s\n",clue, sus);
-            printf("Suspeito: %s\n", actual->suspect);
-            total++;
-        }
-       // actual = actual->next;
-        
-    
+    if (strcmp(actual->clue, clue))
+    {
+        // printf("A pista: %s, pertence ao suspeito: %s\n",clue, sus);
+        printf("Suspeito: %s\n", actual->suspect);
+        total++;
+    }
+    // actual = actual->next;
+
     return total;
-    
 }
 
+void showAllSuspects()
+{
+    int mordomo = 0;
+    int empregada = 0;
+    int idoso = 0;
+    printf("\n--- Suspeitos e suas pistas ---\n");
+    for (int i = 0; i < TABLE_SIZE; i++)
+    {
+        Suspect *current = hash_table[i];
+        if (current == NULL)
+            continue;
+
+        while (current != NULL)
+        {
+            // printf("Suspeito: %s\n", current->suspect);
+            
+            if (strcmp(current->suspect, "Mordomo") == 0)
+            {
+                mordomo++;
+            }
+            else if (strcmp(current->suspect, "Empregada") == 0)
+            {
+                empregada++;
+            }
+            else if (strcmp(current->suspect, "Idoso") == 0)
+            {
+                idoso++;
+            }
+            current = current->next;
+        }
+        printf("\n--- Suspeitos e número de pistas ---\n");
+        printf("Mordomo: %d pistas\n", mordomo);
+        printf("Empregada: %d pistas\n", empregada);
+        printf("Velho: %d pistas\n", idoso);
+
+        
+        int max = mordomo;
+        char *provavel = "Mordomo";
+
+        if (empregada > max)
+        {
+            max = empregada;
+            provavel = "Empregada";
+        }
+        if (idoso > max)
+        {
+            max = idoso;
+            provavel = "Velho";
+        }
+
+        printf("\nSuspeito mais provável: %s\n", provavel);
+        if(strcmp(provavel, "Mordomo") == 0 && max == empregada || max == idoso) {
+            printf("(criterio desempate: o Mordomo e sempre o culpado!)\n");
+        }
+    }
+}
 
 int menu(Room *r)
 {
@@ -204,7 +263,7 @@ void gameLogic()
             printf("\n\n---PISTAS---\n");
             inOrder(c);
             printf("\n\n");
-
+            showAllSuspects();
         }
 
         switch (menu(r))
@@ -276,6 +335,7 @@ struct Clue *createClue(char *clueDescription)
 {
     struct Clue *new = (struct Clue *)malloc(sizeof(struct Clue));
     strcpy(new->clueDescription, clueDescription);
+    strcpy(new->suspectName, suspect[(rand() % 3)]);
     new->left = NULL;
     new->right = NULL;
     return new;
@@ -286,7 +346,7 @@ struct Clue *addClueTree(Clue *r, char clueDescription[])
     if (r == NULL)
     {
         r = createClue(clueDescription);
-        hash_insert(clueDescription, suspect[(rand() %3)]);
+        hash_insert(r->clueDescription, r->suspectName);
     }
 
     if (strcmp(r->clueDescription, clueDescription) > 0)
